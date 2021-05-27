@@ -3,7 +3,8 @@ import funcoes
 menu_consulta = {
     '1': ('- Consulta por ID', funcoes.consulta_cliente_id),
     '2': ('- Consulta por Cidade', funcoes.consulta_cliente_cidade),
-    '3': ('- Consulta Todos Clientes', funcoes.consulta_todos_clientes),
+    '3': ('- Consulta por Nome', funcoes.consulta_cliente_nome),
+    '4': ('- Consulta Todos Clientes', funcoes.consulta_todos_clientes),
     '9': ('- Deslogar', funcoes.sair),
 }
 menu_cadastro = {

@@ -3,6 +3,12 @@ from tabulate import tabulate
 import sys
 from time import sleep
 import menu
+from datetime import datetime
+
+
+data = datetime.now()
+data_hora = data.strftime("%d/%m %H:%M")
+data_atual = data.strftime("%d/%m/%y")
 
 
 def titulo(texto):
@@ -150,6 +156,8 @@ def consulta_cliente_cidade():
 
 def transDeposito():
     titulo('DEPOSITO')
+    global data_atual
+    print(data_atual)
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     print('')
@@ -159,7 +167,7 @@ def transDeposito():
     cliente = cliente1.fetchone()[0]
     print('')
     valor_depositado = float(input(f'Seja bem vindo(a) {cliente} informe o valor do deposito: '))
-    c.execute('''INSERT INTO conta (cod_cliente, entrada) VALUES(?, ?)''', (id_1, valor_depositado))
+    c.execute('''INSERT INTO conta (cod_cliente, entrada, data) VALUES(?, ?)''', (id_1, valor_depositado, data_atual))
     conn.commit()
     consulta_saldo = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
                                 FROM conta c
@@ -167,7 +175,7 @@ def transDeposito():
                                 WHERE c.cod_cliente = ?''', (id_1,))  # <------consulta saldo conta-corrente
     consulta_saldos = consulta_saldo.fetchone()[0]
     print('')
-    print(f'{cliente} depositou {valor_depositado} o saldo de sua conta é de: R${consulta_saldos}')
+    print(f'Data {data_atual} {cliente} depositou {valor_depositado} o saldo de sua conta é de: R${consulta_saldos}')
     conn.close()
 
 
@@ -199,28 +207,38 @@ def transFerencia():
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     print()
-    # identifica cliente 1
+    # #####################################
+    # Identifica quem Transfere
+    # #####################################
     id_1 = int(input('Sua Identificação: Informe o seu ID: '))
     cliente1 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_1,))
     cliente_1 = cliente1.fetchone()[0]
     valor_transf = float(input(f'Seja bem vindo(a) {cliente_1} informe o valor da Transferencia: '))
-    # faz a retirada da conta
+    # #####################################
+    # Faz a retirada da conta
+    # #####################################
     c.execute('''INSERT INTO conta (cod_cliente, saida) VALUES(?, ?)''', (id_1, valor_transf))
 
+    # #####################################
+    # Identifica Favorecido
+    # #####################################
     print()
-    # identifica cliente 2
     id_2 = int(input('Informe o ID do Favorecido que irá receber a Transferencia: '))
     cliente2 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_2,))
     cliente_2 = cliente2.fetchone()[0]
     print()
     input(f'{cliente_1} irá transferir o valor de R${valor_transf} para o cliente {cliente_2} \nprescione ENTER '
           f'para continuar')
-    # faz o deposito na conta do favorecido
+    # #####################################
+    # Faz o depósito na conta do favorecido
+    # #####################################
     c.execute('''INSERT INTO conta (cod_cliente, entrada) VALUES(?, ?)''', (id_2, valor_transf))
     conn.commit()
     print('valor transferido com sucesso')
 
-    # consulta o saldo atual dos clientes
+    # #####################################
+    # Consulta saldo atual dos clientes
+    # #####################################
     saldo_cli1 = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
                                         FROM conta c
                                         LEFT JOIN cliente cli on cli.id = c.cod_cliente
@@ -233,8 +251,7 @@ def transFerencia():
     consulta_saldoc2 = saldo_cli2.fetchone()[0]
     print(f'{cliente_1} saldo atual é de: R${consulta_saldoc1} \n '
           f'{cliente_2} saldo atual é de: R${consulta_saldoc2} ')
-    # print(f'{cliente} depositou {valor_saque} o saldo de sua conta é de: R${consulta_saldos}')
-    conn.close()#
+    conn.close()
 
 
 def pagamentos():

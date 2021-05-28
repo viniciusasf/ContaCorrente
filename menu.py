@@ -1,10 +1,11 @@
 import funcoes
 
 menu_consulta = {
-    '1': ('- Consulta por ID', funcoes.consulta_cliente_id),
-    '2': ('- Consulta por Cidade', funcoes.consulta_cliente_cidade),
-    '3': ('- Consulta por Nome', funcoes.consulta_cliente_nome),
-    '4': ('- Consulta Todos Clientes', funcoes.consulta_todos_clientes),
+    '1': ('- Extrato', funcoes.extrato),
+    '2': ('- Consulta por ID', funcoes.consulta_cliente_id),
+    '3': ('- Consulta por Cidade', funcoes.consulta_cliente_cidade),
+    '4': ('- Consulta por Nome', funcoes.consulta_cliente_nome),
+    '5': ('- Consulta Todos Clientes', funcoes.consulta_todos_clientes),
     '9': ('- Deslogar', funcoes.sair),
 }
 menu_cadastro = {
@@ -16,15 +17,13 @@ menu_trans = {
     '1': ('- Depósito', funcoes.transDeposito),
     '2': ('- Saque', funcoes.transSaque),
     '3': ('- Transferência', funcoes.transFerencia),
-    '4': ('- Pagamentos', funcoes.pagamentos),
-    '5': ('- Extrato', funcoes.extrato),
     '9': ('- Voltar', menu_cadastro),
 }
 menu_principal = {
     '1': ('- Cadastros', menu_cadastro),
     '2': ('- Consultas', menu_consulta),
-    '3': ('- Transações - Em desenvolvimento', menu_trans),
-    '9': ('- Deslogar - Em desenvolvimento', funcoes.sair),
+    '3': ('- Transações', menu_trans),
+    '9': ('- Sair', funcoes.sair),
 }
 
 

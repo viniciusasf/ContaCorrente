@@ -1,43 +1,22 @@
 import sqlite3
 from tabulate import tabulate
-import sys
-from time import sleep
 import menu
+import app_aux
 from datetime import datetime
+
+verm = "\033[1;31m"
+red = "\033[1;32;40m"  # <--- cor vermelho
+reset_color = "\033[0;0m"  # <--- cor preto
+blue = "\033[1;34m"
 
 data = datetime.now()
 data_hora = data.strftime("%d/%m/%y %H:%M")
-data = data.strftime("%d/%m/%y")
-
-reset_color = "\033[0m"  # <--- cor preto
-red = "\033[1;32;40m"  # <--- cor vermelho
-
-
-def titulo(texto):
-    global reset_color
-    global red
-    print('-=' * 15)
-    print(red + texto + reset_color)
-    print('-=' * 15)
-
-
-def sair():
-    global red
-    print('\033[0mEncerrando o sistema.\nAguarde...\nGravando Dados no Bando de Dados...')
-    contagem()
-    print('\nSistema Encerrado')
-    sys.exit()
-
-
-def contagem():
-    for cont in range(3, -1, -1):
-        print(cont, '... ', end='')
-        sleep(1)
 
 
 def criar_conta_corrente():
-    global data_hora
-    titulo('CONTA - CORRENTE')
+    app_aux.titulo('    GERAR CONTA-CORRENTE   ')
+    global data_hora, valor_deposito, id_cliente, value
+    transacao = 'dep_inicial'
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     sql = c.execute('''SELECT cl.id, cl.nome, cl.cidade
@@ -45,38 +24,33 @@ def criar_conta_corrente():
                     LEFT JOIN conta co ON co.cod_cliente = cl.id
                     WHERE co.cod_cliente is NULL''')
     consulta = sql.fetchall()
-    print('CLIENTES ABAIXO NÃO POSSUEM CONTA CORRENTE')
+    print('  CLIENTES SEM CONTA CORRENTE ')
     head = [col[0] for col in sql.description]
     print(tabulate(consulta, headers=head, tablefmt="grid"))
+    #################################################
+    # verifica o ID correto, digitar entra em um loop
+    #################################################
+    for id_cliente in consulta:
+        value = {id_cliente[0]}
 
-    id_cliente = int(input('INFORME O ID DO CLIENTE: '))
-    valor_deposito = float(input('INFORME O VALOR DO DEPOSITO: '))
-
-    c.execute('''INSERT INTO conta (cod_cliente, entrada, data)
-                    VALUES(?, ?, ?)''', (id_cliente, valor_deposito, data_hora))
-    conn.commit()
-    consulta_cliente = c.execute('''SELECT nome
-                                   FROM cliente
-                                   WHERE id = ?''', (id_cliente,))
-
-    cliente = consulta_cliente.fetchone()[0]
-    print(f'Conta-Corrente Gerada com sucesso para o cliente {cliente} com o valor de deposito de {valor_deposito}')
-    conn.close()
-    input("Pressione ENTER para Continuar.")
-    opcao = input("Deseja Criar a Conta Corrente Agora: 1 - SIM / 2 - NÃO: ")
-    if opcao == '1':
-        criar_conta_corrente()
+    id_ = int(input(blue + 'INFORME O ID DO CLIENTE: ' + reset_color))
+    if id_ not in value:
+        print(verm + 'CLIENTE NÃO LOCALIZADO, INFORME O ID DO CLIENTE: ' + reset_color)
     else:
-        menu.monta_menu(menu.menu_principal)
+        valor_dep = float(input(blue + 'INFORME O VALOR DO DEPOSITO: '))  # valor_deposito
+
+    app_aux.insert_deposito(id_cliente, valor_dep, data_hora, transacao)
+    print(f'Conta-Corrente criada com sucesso para o cliente {app_aux.qry_cliente_saldo(id_cliente)[0]}\n '
+          f'Valor depositado R${valor_deposito}')
 
 
 def novo_cliente():
-    titulo('CADASTRO DE CLIENTE')
+    app_aux.titulo('     CADASTRO DE CLIENTE     ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
-    nome = input('NOME DO CLIENTE: ')
-    cidade = input('CIDADE: ')
-    telefone = input('TELEFONE: ')
+    nome = input('NOME DO CLIENTE__: ').upper()
+    cidade = input('CIDADE___________: ').upper()
+    telefone = input('TELEFONE_________: ').upper()
     c.execute('''INSERT INTO cliente (nome, cidade, telefone)
                  VALUES(?, ?, ?)''', (nome, cidade, telefone))
     conn.commit()
@@ -84,16 +58,11 @@ def novo_cliente():
     conn.close()
     print('')
     input("Pressione ENTER para Continuar.")
-    print('')
-    opcao = input("Deseja Criar a Conta Corrente Agora: 1 - SIM / 2 - NÃO: ")
-    if opcao == '1':
-        criar_conta_corrente()
-    else:
-        menu.monta_menu(menu.menu_principal)
+    menu.monta_menu(menu.menu_principal)
 
 
 def consulta_todos_clientes():
-    titulo('CONSULTA TODOS CLIENTES')
+    app_aux.titulo('    CONSULTA TODOS CLIENTES   ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     sql = c.execute('''SELECT * FROM cliente''')
@@ -112,7 +81,7 @@ def consulta_todos_clientes():
 
 
 def consulta_cliente_id():
-    titulo('CONSULTA CLIENTE POR ID')
+    app_aux.titulo('   CONSULTA CLIENTE: ID    ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     id = int(input('Informe o numero do ID_Cliente: '))
@@ -133,7 +102,7 @@ def consulta_cliente_id():
 
 
 def consulta_cliente_nome():
-    titulo('CONSULTA CLIENTE POR NOME')
+    app_aux.titulo('  CONSULTA CLIENTE: NOME   ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     nome = input('Informe o nome do cliente: ')
@@ -155,7 +124,7 @@ def consulta_cliente_nome():
 
 
 def consulta_cliente_cidade():
-    titulo('CONSULTA CLIENTE POR CIDADE')
+    app_aux.titulo(' CONSULTA CLIENTE: CIDADE  ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     cidade = input('Informe a Cidade do Cliente: ')
@@ -174,135 +143,89 @@ def consulta_cliente_cidade():
 
 
 def transDeposito():
+    app_aux.titulo('         DEPOSITO        ')
     global data_hora
     transacao = 'deposito'
-    titulo('DEPOSITO')
-    print(data_hora)
-    conn = sqlite3.connect('contacorente.db')
-    c = conn.cursor()
     print('')
     id_1 = int(input('Sua Identificação: Informe o seu ID: '))
-    print('')
-    cliente1 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_1,))
-    cliente = cliente1.fetchone()[0]
-    print('')
-    valor_dep = float(input(f'Seja bem vindo(a) {cliente} informe o valor do deposito: '))
-    input("Pressione ENTER para Continuar.")
-    c.execute('''INSERT INTO conta (cod_cliente, entrada, data, transacao) VALUES(?, ?, ?, ?)''', (id_1, valor_dep,
-                                                                                                   data_hora,
-                                                                                                   transacao))
-    conn.commit()
-    consulta_saldo = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
-                                FROM conta c
-                                LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                WHERE c.cod_cliente = ?''', (id_1,))  # <------consulta saldo conta-corrente
-    consulta_saldos = consulta_saldo.fetchone()[0]
-    print(f'Data {data_hora} {cliente} voce depositou {valor_dep}\n'
-          f'O saldo atual de sua conta-corrente é de: R${consulta_saldos}')
-    conn.close()
+    valor_deposito = float(input(f'Seja bem vindo(a): {app_aux.qry_cliente_saldo(id_1)[0]}\n '
+                                 f'     Saldo Atual: R${app_aux.qry_cliente_saldo(id_1)[1]}\n'
+                                 f'Valor do Depósito: R$ '))
+    app_aux.insert_deposito(id_1, valor_deposito, data_hora, transacao)
     input('Pressione ENTER para Continuar')
-    opcao = input("Deseja realizar um novo deposito: \n1 - SIM \n2 - NÃO: ")
-    if opcao == '1':
-        transDeposito()
-    else:
-        menu.monta_menu(menu.menu_principal)
+    print('')
+    print(f'* {app_aux.qry_cliente_saldo(id_1)[0]} Depósito realizado com sucesso!'
+          f' saldo atual: R${app_aux.qry_cliente_saldo(id_1)[1]}')
+    menu.monta_menu(menu.menu_principal)
 
 
 def transSaque():
-    titulo('SAQUE')
+    app_aux.titulo('         SAQUE          ')
+    global data_hora
     transacao = 'saque'
-    conn = sqlite3.connect('contacorente.db')
-    c = conn.cursor()
     print('')
     id_1 = int(input('Sua Identificação: Informe o seu ID: '))
-    print('')
-    cliente1 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_1,))
-    cliente = cliente1.fetchone()[0]
-    print('')
-    valor_saque = float(input(f'Seja bem vindo(a) {cliente} informe o valor do saque: '))
-    c.execute('''INSERT INTO conta (cod_cliente, saida, data, transacao) VALUES(?, ?, ?, ?)''', (id_1, valor_saque,
-                                                                                                 data_hora, transacao))
-    conn.commit()
-    consulta_saldo = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
-                                    FROM conta c
-                                    LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                    WHERE c.cod_cliente = ?''', (id_1,))  # <------consulta saldo conta-corrente
-    consulta_saldos = consulta_saldo.fetchone()[0]
-    print('')
-    print(f'{cliente} saque R${valor_saque} realizado com sucesso, o saldo de sua conta é de: R${consulta_saldos}')
-    input('Pressione ENTER para Continuar')
-    opcao = input("Deseja realizar um novo saque: \n1 - SIM \n2 - NÃO:")
-    if opcao == '1':
+    valor_saque = float(input(f'Seja bem vindo(a): {app_aux.qry_cliente_saldo(id_1)[0]}\n '
+                              f'     Saldo Atual: R${app_aux.qry_cliente_saldo(id_1)[1]}\n'
+                              f'   Valor do Saque: R$ '))
+    if valor_saque > app_aux.qry_cliente_saldo(id_1)[1]:
+        print(f'O saldo atual é de R${app_aux.qry_cliente_saldo(id_1)[1]}, '
+              f'não há limite disponivel para o saque de R${valor_saque}')
+        input('PRESSIONE ENTER: ')
         transSaque()
     else:
+        app_aux.insert_saque(id_1, valor_saque, data_hora, transacao)
+        input('Pressione ENTER para Continuar')
+        print(f'{app_aux.qry_cliente_saldo(id_1)[0]} Saque realizado com sucesso!'
+              f' saldo atual: R${app_aux.qry_cliente_saldo(id_1)[1]}')
         menu.monta_menu(menu.menu_principal)
-    conn.close()
 
 
 def transFerencia():
+    app_aux.titulo('    TRANSFERENCIA     ')
     global data_hora
-    transsaida = 'tr_saque'
-    transentrada = 'tr_entrada'
-    titulo('TRANSFERENCIA')
-    conn = sqlite3.connect('contacorente.db')
-    c = conn.cursor()
     print()
     # #####################################
     # Identifica quem Transfere
     # #####################################
-    id_1 = int(input('Sua Identificação: Informe o seu ID: '))
-    cliente1 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_1,))
-    cliente_1 = cliente1.fetchone()[0]
-    valor_transf = float(input(f'Seja bem vindo(a) {cliente_1} informe o valor da Transferencia: '))
-    # #####################################
-    # Faz a retirada da conta
-    # #####################################
-    c.execute('''INSERT INTO conta (cod_cliente, saida, data, transacao VALUES(?, ?, ?, ?)''', (id_1, valor_transf,
-                                                                                                data_hora, transsaida))
-    # #####################################
-    # Identifica Favorecido
-    # #####################################
+    while True:
+        id_1 = int(input('Sua Identificação: \nInforme o seu ID: '))
+        if app_aux.consulta_cliente(id_1):
+            valor_transf = float(input(f'Seja bem vindo(a): {app_aux.qry_cliente_saldo(id_1)[0]} \n     '
+                                       f' Saldo Atual: R${app_aux.qry_cliente_saldo(id_1)[1]} '
+                                       f'\n    Transferencia: R$'))
+            break
+        else:
+            print(verm + '\nCliente Não localizado, tente novamente:\n' + reset_color)
+    ###################################################
+    # Identifica Favorecido e confirma a transferencia
+    ###################################################
     print()
-    id_2 = int(input('Informe o ID do Favorecido que irá receber a Transferencia: '))
-    cliente2 = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_2,))
-    cliente_2 = cliente2.fetchone()[0]
-    print()
-    input(f'{cliente_1} irá transferir o valor de R${valor_transf} para o cliente {cliente_2} \nprescione ENTER '
-          f'para continuar')
+    while True:
+        id_2 = int(input('    ID_FAVORECIDO: '))
+        if app_aux.consulta_cliente(id_2):
+            input(f'        CLIENTE__: {app_aux.qry_cliente_saldo(id_2)[0]} \nPrescione ENTER para CONFIRMAR')
+            break
+        else:
+            print(verm + '\nCliente Não localizado, tente novamente:\n' + reset_color)
     # #####################################
     # Faz o depósito na conta do favorecido
     # #####################################
-    c.execute('''INSERT INTO conta (cod_cliente, entrada, data) VALUES(?, ?, ?, ?)''', (id_2, valor_transf,
-                                                                                        data_hora, transentrada))
-    conn.commit()
-    print('valor transferido com sucesso')
-
+    transSaida = 'tr_saque'
+    transEntrada = 'tr_entrada'
+    app_aux.insert_saque(id_1, valor_transf, data_hora, transSaida)  # realizada saque do cliente
+    app_aux.insert_deposito(id_2, valor_transf, data_hora, transEntrada)  # deposita para o favorecido
+    input(blue+'\nTransação realizada com SUCESSO!'+reset_color)
     # #####################################
     # Consulta saldo atual dos clientes
     # #####################################
-    saldo_cli1 = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
-                                        FROM conta c
-                                        LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                        WHERE c.cod_cliente = ?''', (id_1,))  # <------consulta saldo conta-corrente
-    consulta_saldoc1 = saldo_cli1.fetchone()[0]
-    saldo_cli2 = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
-                                            FROM conta c
-                                            LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                            WHERE c.cod_cliente = ?''', (id_2,))  # <------consulta saldo conta-corrente
-    consulta_saldoc2 = saldo_cli2.fetchone()[0]
-    print(f'{cliente_1} saldo atual é de: R${consulta_saldoc1} \n '
-          f'{cliente_2} saldo atual é de: R${consulta_saldoc2} ')
-    conn.close()
+    print(f'\n{app_aux.qry_cliente_saldo(id_1)[0]}\nSaldo atual: R${app_aux.qry_cliente_saldo(id_1)[1]}')
     input('Pressione ENTER para Continuar')
-    opcao = input("Deseja realizar uma nova Transferência: 1 - SIM / 2 - NÃO")
-    if opcao == '1':
-        transFerencia()
-    else:
-        menu.monta_menu(menu.menu_principal)
-    conn.close()
+    menu.monta_menu(menu.menu_principal)
 
 
 def extrato():
+    app_aux.titulo('       EXTRATO       ')
     conn = sqlite3.connect('contacorente.db')
     c = conn.cursor()
     print()
@@ -311,35 +234,17 @@ def extrato():
         cliente = c.execute('''SELECT nome FROM cliente WHERE id = ?''', (id_1,))
         cliente1 = cliente.fetchone()[0]
         print(f'{cliente1} extrato para simples conferência.')
-        sql = c.execute('''SELECT c.data, c.entrada, c.saida
+        sql = c.execute('''SELECT c.data, c.entrada, c.saida, c.transacao
                                         FROM conta C
                                         LEFT JOIN cliente cli on cli.id = c.cod_cliente
                                         WHERE c.cod_cliente = ?
-                                        ORDER BY c.data''', (id_1,))  # <------consulta conta cliente
+                                        ORDER BY c.id ASC''', (id_1,))  # <------consulta conta cliente
         consulta = sql.fetchall()
         head = [col[0] for col in sql.description]
         print(tabulate(consulta, headers=head, tablefmt="grid"))
-
-        ent = c.execute('''SELECT sum(c.entrada)     
-                                            FROM conta c
-                                            LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                            WHERE c.cod_cliente = ?''', (id_1,))
-        entrada = ent.fetchone()[0]
-        sai = c.execute('''SELECT sum(c.saida)     
-                                                FROM conta c
-                                                LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                                WHERE c.cod_cliente = ?''', (id_1,))
-        saida = sai.fetchone()[0]
-        sal = c.execute('''SELECT sum(c.entrada) - sum(c.saida)     
-                                                FROM conta c
-                                                LEFT JOIN cliente cli on cli.id = c.cod_cliente
-                                                WHERE c.cod_cliente = ?''',
-                        (id_1,))  # <------consulta saldo conta-corrente
-        saldo = sal.fetchone()[0]
-        print(f'TOTAL ENTRADA: R${entrada}')
-        print(f'TOTAL   SAÍDA: R${saida}')
-        print(f'SALDO ATUAL  : R${saldo}')
-        conn.close()
+        print(f'TOTAL ENTRADA: R${app_aux.qry_cliente_saldo(id_1)[2]}')
+        print(f'TOTAL   SAÍDA: R${app_aux.qry_cliente_saldo(id_1)[3]}')
+        print(f'SALDO   ATUAL: R${app_aux.qry_cliente_saldo(id_1)[1]}')
         input("Prescione ENTER para sair.")
         menu.monta_menu(menu.menu_principal)
     except TypeError:
